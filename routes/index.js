@@ -144,10 +144,28 @@ module.exports = function (app, addon) {
 
   // This is an example route to handle an incoming webhook
   // https://developer.atlassian.com/hipchat/guide/webhooks
-  app.post('/webhooks/pain',
+  app.post('/webhooks/pains',
     addon.authenticate(),
     function (req, res) {
-      hipchat.sendMessage(req.clientInfo, req.identity.roomId, 'Pain reported. Thank you!')
+      hipchat.sendMessage(req.clientInfo, req.identity.roomId, 'These are the currently reported pains')
+        .then(function (data) {
+          res.sendStatus(200);
+        });
+    }
+  );
+  app.post('/webhooks/ouch',
+    addon.authenticate(),
+    function (req, res) {
+      hipchat.sendMessage(req.clientInfo, req.identity.roomId, "Hmm. I see. I'm very sorry you've had to endure that.")
+        .then(function (data) {
+          res.sendStatus(200);
+        });
+    }
+  );
+  app.post('/webhooks/heal',
+    addon.authenticate(),
+    function (req, res) {
+      hipchat.sendMessage(req.clientInfo, req.identity.roomId, 'Thank you so much! @here, rejoice! A pain has been healed!')
         .then(function (data) {
           res.sendStatus(200);
         });

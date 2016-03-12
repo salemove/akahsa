@@ -23,13 +23,25 @@
     "configurable": {
       "url": "{{localBaseUrl}}/config"
     },
-    "webhook": {
-      "url": "{{localBaseUrl}}/webhooks/pain",
-      "pattern": "^/pain ",
+    "webhook": [{
+      "url": "{{localBaseUrl}}/webhooks/pains",
+      "pattern": "^/pains",
       "event": "room_message",
-      "name": "Report pain",
+      "name": "List pains",
       "authentication": "jwt"
-	},
+    }, {
+      "url": "{{localBaseUrl}}/webhooks/ouch",
+      "pattern": "^/ouch",
+      "event": "room_message",
+      "name": "Report a pain",
+      "authentication": "jwt"
+    }, {
+      "url": "{{localBaseUrl}}/webhooks/heal",
+      "pattern": "^/heal",
+      "event": "room_message",
+      "name": "Heal a pain",
+      "authentication": "jwt"
+    }],
     "glance": [
       {
         "name": {
