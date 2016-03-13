@@ -144,32 +144,39 @@ module.exports = function (app, addon) {
     }
     );
 
+  var getTableOfTop5Pains = function(painList) {
+    if (R.either(R.isNil, R.isEmpty)(painList)) {
+      return "No! You're pain free?!";
+    } else {
+      return R.reduce(
+        function(html, pain) {
+          var nrOfReporters = pain.reporters.length;
+          return html + '<tr>' +
+            '<td>' + pain.description + '</td>' +
+            '<td>' + nrOfReporters + '</td>' +
+            '<td>' + pain.id + '</td>' +
+            '</tr>';
+        },
+        'The top 5 pains right now:<br><table><tr>' +
+          '<th>Pain</th>' +
+          '<th>Reporters</th>' +
+          '<th>ID</th>' +
+          '</tr>',
+        R.take(5, painList)
+      ) + '</table>';
+    }
+  };
+
   // This is an example route to handle an incoming webhook
   // https://developer.atlassian.com/hipchat/guide/webhooks
   app.post('/webhooks/pains',
     addon.authenticate(),
     function (req, res) {
       pains.listPains(req.clientInfo.clientKey).then(function success(painList) {
-        var htmlPainList = R.reduce(
-          function(html, pain) {
-            var nrOfReporters = pain.reporters.length;
-            return html + '<tr>' +
-              '<td>' + pain.description + '</td>' +
-              '<td>' + nrOfReporters + '</td>' +
-              '<td>' + pain.id + '</td>' +
-              '</tr>';
-          },
-          'The top 5 pains right now:<br><table><tr>' +
-            '<th>Pain</th>' +
-            '<th>Reporters</th>' +
-            '<th>ID</th>' +
-            '</tr>',
-          R.take(5, painList)
-        ) + '</table>';
         return hipchat.sendMessage(
           req.clientInfo,
           req.identity.roomId,
-          htmlPainList
+          getTableOfTop5Pains(painList)
         );
       }, function failure(error) {
         console.error('Failed to list pains', req.body.item.message, error);
