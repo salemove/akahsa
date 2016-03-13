@@ -175,6 +175,23 @@ module.exports = function (app, addon) {
       ) + '</table>';
     }
   };
+  var painReportResponses = [
+    'You had it coming!',
+    'Oh! That hardly hurts at all.',
+    "So you're in a world of pain? That's wonderful!",
+    'Oh yes!',
+    'So begins the reign of pain.',
+    'All aboard the pain train!',
+    'Tell me exactly how it hurts.',
+    'Suffer!',
+    'Sweet pain.',
+    'Scream!',
+    'Pain builds character.',
+    'I love a struggle.',
+  ];
+  var randomPainReportResponse = function() {
+    return painReportResponses[Math.floor(Math.random()*painReportResponses.length)];
+  };
 
   // This is an example route to handle an incoming webhook
   // https://developer.atlassian.com/hipchat/guide/webhooks
@@ -222,7 +239,7 @@ module.exports = function (app, addon) {
         return hipchat.sendMessage(
           req.clientInfo,
           req.identity.roomId,
-          "You've got it coming."
+          randomPainReportResponse()
         );
       }, function failure(error) {
         console.error('Failed to report a pain', req.body.item.message, error);
