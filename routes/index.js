@@ -150,10 +150,19 @@ module.exports = function (app, addon) {
     } else {
       return R.reduce(
         function(html, pain) {
-          var nrOfReporters = pain.reporters.length;
+          var reporterInitials = R.compose(
+            R.join(', '),
+            R.map(R.compose(
+              R.toUpper,
+              R.join(''),
+              R.map(R.head),
+              R.split(/\s+/),
+              R.prop('name')
+            ))
+          )(pain.reporters);
           return html + '<tr>' +
             '<td>' + pain.description + '</td>' +
-            '<td>' + nrOfReporters + '</td>' +
+            '<td>' + reporterInitials + '</td>' +
             '<td>' + pain.id + '</td>' +
             '</tr>';
         },
