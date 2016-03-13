@@ -207,7 +207,7 @@ module.exports = function (app, addon) {
           R.replace(/^\/ouch/, '')
         )(req.body.item.message.message),
       };
-      var reporter = R.pick(['id', 'name'], req.body.item.message.from);
+      var reporter = R.pick(['id', 'mention_name',  'name'], req.body.item.message.from);
 
       pains.reportPain(clientKey, pain, reporter).then(function success() {
         return hipchat.sendMessage(
@@ -243,7 +243,11 @@ module.exports = function (app, addon) {
       var healerName = req.body.item.message.from.name;
 
       pains.healPain(clientKey, description).then(function success(healedPain) {
-        var healedNames = R.join(', ', R.map(R.prop('name'), healedPain.reporters))
+        var healedNames = R.compose(
+          R.join(', '),
+          R.map(function(name) {return '@' + name;}),
+          R.map(R.prop('mention_name'))
+        )(healedPain.reporters);
         return hipchat.sendMessage(
           req.clientInfo,
           req.identity.roomId,
