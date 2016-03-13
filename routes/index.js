@@ -176,7 +176,8 @@ module.exports = function (app, addon) {
         return hipchat.sendMessage(
           req.clientInfo,
           req.identity.roomId,
-          getTableOfTop5Pains(painList)
+          getTableOfTop5Pains(painList),
+          {options: {color: 'gray'}}
         );
       }, function failure(error) {
         console.error('Failed to list pains', req.body.item.message, error);
@@ -184,7 +185,7 @@ module.exports = function (app, addon) {
           req.clientInfo,
           req.identity.roomId,
           "I'm afraid something went wrong and I wasn't able to fetch all the pains.",
-          {color: 'red'}
+          {options: {color: 'red'}}
         );
       }).then(function (data) {
           res.sendStatus(200);
@@ -220,7 +221,7 @@ module.exports = function (app, addon) {
           req.clientInfo,
           req.identity.roomId,
           "I'm afraid something went wrong and I wasn't able to record your pain.",
-          {color: 'red'}
+          {options: {color: 'red'}}
         );
       }).then(function (data) {
           res.sendStatus(200);
@@ -234,9 +235,40 @@ module.exports = function (app, addon) {
   app.post('/webhooks/heal',
     addon.authenticate(),
     function (req, res) {
-      hipchat.sendMessage(req.clientInfo, req.identity.roomId, 'Thank you so much! @here, rejoice! A pain has been healed!')
-        .then(function (data) {
+      var clientKey = req.clientInfo.clientKey;
+      var description = R.compose(
+        R.trim,
+        R.replace(/^\/heal/, '')
+      )(req.body.item.message.message);
+      var healerName = req.body.item.message.from.name;
+
+      pains.healPain(clientKey, description).then(function success(healedPain) {
+        var healedNames = R.join(', ', R.map(R.prop('name'), healedPain.reporters))
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          healedNames + ', rejoice! ' + healerName + ' has healed your pain!',
+          {
+            options: {
+              color: 'green',
+              format: 'text',
+            }
+          }
+        );
+      }, function failure(error) {
+        console.error('Failed to heal a pain', req.body.item.message, error);
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          "Hmm. Something went wrong. Are you sure someone has reported that pain?",
+          {options: {color: 'red'}}
+        );
+      }).then(function (data) {
           res.sendStatus(200);
+        }).catch(function(error) {
+          console.error('Failed to send a response to hipchat', error);
+          res.sendStatus(500);
+          return RSVP.Promise.reject(error);
         });
     }
   );

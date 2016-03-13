@@ -235,4 +235,132 @@ describe('pains', function() {
       });
     });
   });
+
+  describe('#healPain', function() {
+    var clientKey = memoized('a-key');
+    var description = memoized('');
+    var expectedNewPains = memoized([]);
+    var currentPainsPromise = memoized(Promise.resolve([]));
+    var setPainsPromise = memoized(Promise.resolve(null));
+    var healedPain = null;
+    var error = null;
+
+    get.is(function() {
+      return sinon.stub()
+        .withArgs('pains', clientKey())
+        .returns(currentPainsPromise());
+    });
+    set.is(function() {
+      return sinon.stub()
+        .withArgs('pains', expectedNewPains(), clientKey())
+        .returns(setPainsPromise());
+    });
+
+    beforeEach(function() {
+      healedPain = null;
+      error = null;
+      return pains.healPain(clientKey(), description()).then(function(_healedPain_) {
+        healedPain = _healedPain_;
+      }).catch(function(_error_) {
+        error = _error_;
+      });
+    });
+
+    context('with getting pains from DB failing', function() {
+      var dbError = new Error('DB missing');
+      currentPainsPromise.is(R.always(Promise.reject(dbError)));
+
+      it('fails with same error', function() {
+        expect(error).to.eql(dbError);
+      });
+    });
+
+    context('with current DB entry being empty (null)', function() {
+      currentPainsPromise.is(R.always(Promise.resolve(null)));
+
+      it('fails not finding the pain to heal', function() {
+        expect(error).to.be.instanceof(Error);
+      });
+    });
+
+    context('with there being no pains (DB entry is an empty array)', function() {
+      currentPainsPromise.is(R.always(Promise.resolve([])));
+
+      it('fails not finding the pain to heal', function() {
+        expect(error).to.be.instanceof(Error);
+      });
+    });
+
+    context('with a different pain in DB', function() {
+      currentPainsPromise.is(R.always(Promise.resolve([{
+        id: 'an id',
+        description: 'a description',
+      }])));
+      description.is(R.always('something different'));
+
+      it('fails not finding the pain to heal', function() {
+        expect(error).to.be.instanceof(Error);
+      });
+    });
+
+    var itHealsThePain = function(painToHeal) {
+      context('with setting new pains to DB failing', function() {
+        var dbError = new Error('DB missing');
+        setPainsPromise.is(R.always(Promise.reject(dbError)));
+
+        it('fails with same error', function() {
+          expect(error).to.eql(dbError);
+        });
+      });
+
+      context('with setting new pains to DB succeeding', function() {
+        it('resolves with the healed pain', function() {
+          expect(error).to.be.null;
+          expect(healedPain).to.eql(painToHeal);
+        });
+      });
+    };
+
+    context('with a pain with matching ID in DB', function() {
+      var id = 'an id';
+      var painToHeal = {
+        id: id,
+        description: 'a description',
+      };
+      currentPainsPromise.is(R.always(Promise.resolve([painToHeal])));
+      expectedNewPains.is(R.always([]));
+      description.is(R.always(id));
+
+      context('with no other pains in DB', function() {
+        currentPainsPromise.is(R.always(Promise.resolve([painToHeal])));
+        expectedNewPains.is(R.always([]));
+
+        itHealsThePain(painToHeal);
+      });
+
+      context('with other pains in DB as well', function() {
+        var otherPain = {
+          id: 'other id',
+          description: 'other description',
+        };
+        currentPainsPromise.is(R.always(Promise.resolve([otherPain, painToHeal])));
+        expectedNewPains.is(R.always([otherPain]));
+
+        itHealsThePain(painToHeal);
+      });
+    });
+
+    context('with a pain with matching description in DB', function() {
+      var existingDescription = 'a description';
+      var painToHeal = {
+        id: 'an id',
+        description: existingDescription,
+      };
+      currentPainsPromise.is(R.always(Promise.resolve([painToHeal])));
+      expectedNewPains.is(R.always([]));
+      description.is(R.always(existingDescription));
+
+      itHealsThePain(painToHeal);
+    });
+  });
 });
