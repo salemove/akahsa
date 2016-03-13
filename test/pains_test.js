@@ -31,7 +31,7 @@ describe('pains', function() {
 
   describe('#reportPain', function() {
     var clientKey = memoized('a-key');
-    var description = memoized('');
+    var pain = memoized('');
     var reporter = memoized({});
     var currentPainsPromise = memoized(Promise.resolve([]));
     var setPainsPromise = memoized(Promise.resolve(null));
@@ -52,7 +52,7 @@ describe('pains', function() {
     beforeEach(function() {
       newPains = null;
       error = null;
-      return pains.reportPain(clientKey(), description(), reporter()).then(function() {
+      return pains.reportPain(clientKey(), pain(), reporter()).then(function() {
         newPains = set().firstCall.args[1];
       }).catch(function(_error_) {
         error = _error_;
@@ -78,88 +78,125 @@ describe('pains', function() {
     });
 
     context('with current DB entry being empty (null)', function() {
-      var desc = 'a description';
+      var reportedPain = {
+        id: 'an-id',
+        description: 'a description',
+      };
       var aReporter = {id: 1, name: 'a name'};
       currentPainsPromise.is(R.always(Promise.resolve(null)));
-      description.is(R.always(desc));
+      pain.is(R.always(reportedPain));
       reporter.is(R.always(aReporter))
 
       it('inserts the reported pain into the DB', function() {
         expect(newPains).to.eql([{
-          description: desc,
+          id: reportedPain.id,
+          description: reportedPain.description,
           reporters: [aReporter],
         }]);
       });
     });
 
     context('with there being no pains (DB entry is an empty array)', function() {
-      var desc = 'a description';
+      var reportedPain = {
+        id: 'an-id',
+        description: 'a description',
+      };
       var aReporter = {id: 1, name: 'a name'};
       currentPainsPromise.is(R.always(Promise.resolve([])));
-      description.is(R.always(desc));
+      pain.is(R.always(reportedPain));
       reporter.is(R.always(aReporter))
 
       it('inserts the reported pain into the DB', function() {
         expect(newPains).to.eql([{
-          description: desc,
+          id: reportedPain.id,
+          description: reportedPain.description,
           reporters: [aReporter],
         }]);
       });
     });
 
     context('with a different pain having been previously reported', function() {
-      var desc = 'a description';
+      var reportedPain = {
+        id: 'an-id',
+        description: 'a description',
+      };
       var aReporter = {id: 1, name: 'a name'};
       var previousPain = {
+        id: 'other-id',
         description: 'different description',
         reporters: [aReporter],
       };
       currentPainsPromise.is(R.always(Promise.resolve([previousPain])));
-      description.is(R.always(desc));
+      pain.is(R.always(reportedPain));
       reporter.is(R.always(aReporter))
 
       it('updates the DB record to include both pains', function() {
         expect(newPains).to.eql([previousPain, {
-          description: desc,
+          id: reportedPain.id,
+          description: reportedPain.description,
           reporters: [aReporter],
         }]);
       });
     });
 
     context('with the same pain having been previously reported', function() {
-      context('by the same reporter', function() {
-        var desc = 'a description';
-        var aReporter = {id: 1, name: 'a name'};
-        var previousPain = {
-          description: desc,
-          reporters: [aReporter],
+      var previousId = 'an id';
+      var previousDescription = 'a description';
+      var previousReporter = memoized({});
+      var previousPain = memo().is(function() {
+        return {
+          id: previousId,
+          description: previousDescription,
+          reporters: [previousReporter()],
         };
-        currentPainsPromise.is(R.always(Promise.resolve([previousPain])));
-        description.is(R.always(desc));
-        reporter.is(R.always(aReporter))
-
-        it('keeps the DB record the same', function() {
-          expect(newPains).to.eql([previousPain]);
-        });
+      });
+      currentPainsPromise.is(function() {
+        return Promise.resolve([previousPain()]);
       });
 
-      context('by a different reporter', function() {
-        var desc = 'a description';
-        var aReporter = {id: 1, name: 'a name'};
-        var previousPain = {
-          description: desc,
-          reporters: [{id: 2, name: 'different name'}],
-        };
-        currentPainsPromise.is(R.always(Promise.resolve([previousPain])));
-        description.is(R.always(desc));
-        reporter.is(R.always(aReporter))
+      var itUpdatesTheDbRecord = function() {
+        context('by the same reporter', function() {
+          var aReporter = {id: 1, name: 'a name'};
+          previousReporter.is(R.always(aReporter));
+          reporter.is(R.always(aReporter))
 
-        it('updates the DB record to include the other reporter', function() {
-          expect(newPains).to.eql([{
-            description: desc,
-            reporters: previousPain.reporters.concat(aReporter),
-          }]);
+          it('keeps the DB record the same', function() {
+            expect(newPains).to.eql([previousPain()]);
+          });
         });
+
+        context('by a different reporter', function() {
+          var aReporter = {id: 1, name: 'a name'};
+          var differentReporter = {id: 2, name: 'different name'};
+          previousReporter.is(R.always(differentReporter));
+          reporter.is(R.always(aReporter))
+
+          it('updates the DB record to include the other reporter', function() {
+            expect(newPains).to.eql([{
+              id: previousPain().id,
+              description: previousPain().description,
+              reporters: [differentReporter, aReporter],
+            }]);
+          });
+        });
+      };
+
+      context('with the same exact description', function() {
+        pain.is(R.always({
+          id: 'another id',
+          description: previousDescription,
+        }));
+
+        itUpdatesTheDbRecord();
+      });
+
+      context('with the description referring to the previous ID', function() {
+        pain.is(R.always({
+          id: 'another id',
+          description: previousId,
+        }));
+
+        itUpdatesTheDbRecord();
       });
     });
   });

@@ -153,11 +153,19 @@ module.exports = function (app, addon) {
         var htmlPainList = R.reduce(
           function(html, pain) {
             var nrOfReporters = pain.reporters.length;
-            return html + '<br> ' + nrOfReporters + ' - "' + pain.description + '"';
+            return html + '<tr>' +
+              '<td>' + pain.description + '</td>' +
+              '<td>' + nrOfReporters + '</td>' +
+              '<td>' + pain.id + '</td>' +
+              '</tr>';
           },
-          'The top 5 pains right now:',
+          'The top 5 pains right now:<br><table><tr>' +
+            '<th>Pain</th>' +
+            '<th>Reporters</th>' +
+            '<th>ID</th>' +
+            '</tr>',
           R.take(5, painList)
-        );
+        ) + '</table>';
         return hipchat.sendMessage(
           req.clientInfo,
           req.identity.roomId,
@@ -184,10 +192,13 @@ module.exports = function (app, addon) {
     addon.authenticate(),
     function (req, res) {
       var clientKey = req.clientInfo.clientKey;
-      var pain = R.compose(
-        R.trim,
-        R.replace(/^\/ouch/, '')
-      )(req.body.item.message.message);
+      var pain = {
+        id: req.body.item.message.id,
+        description: R.compose(
+          R.trim,
+          R.replace(/^\/ouch/, '')
+        )(req.body.item.message.message),
+      };
       var reporter = R.pick(['id', 'name'], req.body.item.message.from);
 
       pains.reportPain(clientKey, pain, reporter).then(function success() {
