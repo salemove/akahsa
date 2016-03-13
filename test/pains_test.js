@@ -30,7 +30,7 @@ describe('pains', function() {
   });
 
   describe('#reportPain', function() {
-    var clientKey = memoized('');
+    var clientKey = memoized('a-key');
     var description = memoized('');
     var reporter = memoized({});
     var currentPainsPromise = memoized(Promise.resolve([]));
@@ -159,6 +159,41 @@ describe('pains', function() {
             description: desc,
             reporters: previousPain.reporters.concat(aReporter),
           }]);
+        });
+      });
+    });
+  });
+
+  describe('#listPains', function() {
+    var clientKey = memoized('a-key');
+    var currentPainsPromise = memoized(Promise.resolve([]));
+
+    get.is(function() {
+      return sinon.stub()
+        .withArgs('pains', clientKey())
+        .returns(currentPainsPromise());
+    });
+
+    context('with getting the pains from DB failing', function() {
+      var dbError = new Error('DB missing');
+      currentPainsPromise.is(R.always(Promise.reject(dbError)));
+
+      it('fails with same error', function() {
+        return pains.listPains(clientKey()).then(function success() {
+          expect.fail();
+        }, function failure(error) {
+          expect(error).to.eql(dbError);
+        });
+      });
+    });
+
+    context('with getting the pains from DB succeeding', function() {
+      var dbPains = [{mock: 'pain'}];
+      currentPainsPromise.is(R.always(Promise.resolve(dbPains)));
+
+      it('resolves with the pains returned from DB', function() {
+        return pains.listPains(clientKey()).then(function success(returnedPains) {
+          expect(returnedPains).to.eql(dbPains);
         });
       });
     });
