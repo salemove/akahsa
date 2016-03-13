@@ -2,11 +2,13 @@ var http = require('request');
 var cors = require('cors');
 var uuid = require('uuid');
 var url = require('url');
+var R = require('ramda');
 
 // This is the heart of your HipChat Connect add-on. For more information,
 // take a look at https://developer.atlassian.com/hipchat/tutorials/getting-started-with-atlassian-connect-express-node-js
 module.exports = function (app, addon) {
   var hipchat = require('../lib/hipchat')(addon);
+  var pains = require('../lib/pains')(addon);
 
   // simple healthcheck
   app.get('/healthcheck', function (req, res) {
@@ -147,18 +149,67 @@ module.exports = function (app, addon) {
   app.post('/webhooks/pains',
     addon.authenticate(),
     function (req, res) {
-      hipchat.sendMessage(req.clientInfo, req.identity.roomId, 'These are the currently reported pains')
-        .then(function (data) {
+      pains.listPains(req.clientInfo.clientKey).then(function success(painList) {
+        var htmlPainList = R.reduce(
+          function(html, pain) {
+            var nrOfReporters = pain.reporters.length;
+            return html + '<br> ' + nrOfReporters + ' - "' + pain.description + '"';
+          },
+          'The top 5 pains right now:',
+          R.take(5, painList)
+        );
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          htmlPainList
+        );
+      }, function failure(error) {
+        console.error('Failed to list pains', req.body.item.message, error);
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          "I'm afraid something went wrong and I wasn't able to fetch all the pains.",
+          {color: 'red'}
+        );
+      }).then(function (data) {
           res.sendStatus(200);
+        }).catch(function(error) {
+          console.error('Failed to send a response to hipchat', error);
+          res.sendStatus(500);
+          return RSVP.Promise.reject(error);
         });
     }
   );
   app.post('/webhooks/ouch',
     addon.authenticate(),
     function (req, res) {
-      hipchat.sendMessage(req.clientInfo, req.identity.roomId, "Hmm. I see. I'm very sorry you've had to endure that.")
-        .then(function (data) {
+      var clientKey = req.clientInfo.clientKey;
+      var pain = R.compose(
+        R.trim,
+        R.replace(/^\/ouch/, '')
+      )(req.body.item.message.message);
+      var reporter = R.pick(['id', 'name'], req.body.item.message.from);
+
+      pains.reportPain(clientKey, pain, reporter).then(function success() {
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          "You've got it coming."
+        );
+      }, function failure(error) {
+        console.error('Failed to report a pain', req.body.item.message, error);
+        return hipchat.sendMessage(
+          req.clientInfo,
+          req.identity.roomId,
+          "I'm afraid something went wrong and I wasn't able to record your pain.",
+          {color: 'red'}
+        );
+      }).then(function (data) {
           res.sendStatus(200);
+        }).catch(function(error) {
+          console.error('Failed to send a response to hipchat', error);
+          res.sendStatus(500);
+          return RSVP.Promise.reject(error);
         });
     }
   );
