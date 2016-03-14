@@ -148,31 +148,37 @@ module.exports = function (app, addon) {
     if (R.either(R.isNil, R.isEmpty)(painList)) {
       return "No! You're pain free?!";
     } else {
-      return R.reduce(
-        function(html, pain) {
-          var reporterInitials = R.compose(
-            R.join(', '),
-            R.map(R.compose(
-              R.toUpper,
-              R.join(''),
-              R.map(R.head),
-              R.split(/\s+/),
-              R.prop('name')
-            ))
-          )(pain.reporters);
-          return html + '<tr>' +
-            '<td>' + pain.description + '</td>' +
-            '<td>' + reporterInitials + '</td>' +
-            '<td>' + pain.id + '</td>' +
-            '</tr>';
-        },
-        'The top 5 pains right now:<br><table><tr>' +
-          '<th>Pain</th>' +
-          '<th>Reporters</th>' +
-          '<th>ID</th>' +
-          '</tr>',
-        R.take(5, painList)
-      ) + '</table>';
+      var appendPainToList = function(html, pain) {
+        var reporterInitials = R.compose(
+          R.join(', '),
+          R.map(R.compose(
+            R.toUpper,
+            R.join(''),
+            R.map(R.head),
+            R.split(/\s+/),
+            R.prop('name')
+          ))
+        )(pain.reporters);
+        return html + '<tr>' +
+          '<td>' + pain.description + '</td>' +
+          '<td>' + reporterInitials + '</td>' +
+          '<td>' + pain.id + '</td>' +
+          '</tr>';
+      };
+      var painListHeaders = 'The top 5 pains right now:<br><table><tr>' +
+        '<th>Pain</th>' +
+        '<th>Reporters</th>' +
+        '<th>ID</th>' +
+        '</tr>';
+      return R.compose(
+        R.reduce(appendPainToList, painListHeaders),
+        R.take(5),
+        R.reverse,
+        R.sortBy(R.compose(
+          R.length,
+          R.prop('reporters')
+        ))
+      )(painList) + '</table>';
     }
   };
   var painReportResponses = [
