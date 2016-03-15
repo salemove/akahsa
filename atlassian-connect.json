@@ -3,8 +3,8 @@
   "name": "Akahsa",
   "description": "Akahsa, the pain bot",
   "vendor": {
-    "name": "Deiwin Sarjas",
-    "url": "https://github.com/deiwin"
+    "name": "SaleMove",
+    "url": "https://github.com/salemove/akahsa"
   },
   "links": {
     "self": "{{localBaseUrl}}/atlassian-connect.json",
