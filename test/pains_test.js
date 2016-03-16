@@ -140,7 +140,7 @@ describe('pains', function() {
     });
 
     context('with the same pain having been previously reported', function() {
-      var previousId = 'an id';
+      var previousId = 'd9872979-d66a-41a7-a83b-31f13182f9ae';
       var previousDescription = 'a description';
       var previousReporter = memoized({});
       var previousPain = memo().is(function() {
@@ -194,6 +194,15 @@ describe('pains', function() {
         pain.is(R.always({
           id: 'another id',
           description: previousId,
+        }));
+
+        itUpdatesTheDbRecord();
+      });
+
+      context('with the description partially matching the previous ID', function() {
+        pain.is(R.always({
+          id: 'another id',
+          description: previousId.substring(0, 8),
         }));
 
         itUpdatesTheDbRecord();
@@ -303,6 +312,18 @@ describe('pains', function() {
       });
     });
 
+    context('with ID being regex matched', function() {
+      currentPainsPromise.is(R.always(Promise.resolve([{
+        id: 'an id',
+        description: 'a description',
+      }])));
+      description.is(R.always('.*'));
+
+      it('fails not finding the pain to heal (regex is escaped)', function() {
+        expect(error).to.be.instanceof(Error);
+      });
+    });
+
     var itHealsThePain = function(painToHeal) {
       context('with setting new pains to DB failing', function() {
         var dbError = new Error('DB missing');
@@ -321,7 +342,7 @@ describe('pains', function() {
       });
     };
 
-    context('with a pain with matching ID in DB', function() {
+    context('with a pain with exactly matching ID in DB', function() {
       var id = 'an id';
       var painToHeal = {
         id: id,
@@ -348,6 +369,20 @@ describe('pains', function() {
 
         itHealsThePain(painToHeal);
       });
+    });
+
+    context('with a pain with partially matching ID in DB', function() {
+      var id = 'd9872979-d66a-41a7-a83b-31f13182f9ae';
+      var painToHeal = {
+        id: id,
+        description: 'a description',
+      };
+      currentPainsPromise.is(R.always(Promise.resolve([painToHeal])));
+      expectedNewPains.is(R.always([]));
+      description.is(R.always(id.substring(0, 8)));
+      currentPainsPromise.is(R.always(Promise.resolve([painToHeal])));
+
+      itHealsThePain(painToHeal);
     });
 
     context('with a pain with matching description in DB', function() {
